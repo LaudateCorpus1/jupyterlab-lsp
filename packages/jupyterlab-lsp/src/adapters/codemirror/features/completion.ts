@@ -26,7 +26,7 @@ export class Completion extends CodeMirrorLSPFeature {
     let last_character = this.extract_last_character(change);
     if (this.completionCharacters.indexOf(last_character) > -1) {
       this.virtual_editor.console.log(
-        'Will invoke completer after',
+        'Will invoke completer with Completion Items after',
         last_character
       );
       this.jupyterlab_components.invoke_completer(
