@@ -6,7 +6,9 @@
   --jp-editor-mirror-lsp-diagnostic-error-decoration-color: var(
     --jp-error-color1
   );
-  --jp-editor-mirror-lsp-diagnostic-warning-decoration-color: purple;
+  --jp-editor-mirror-lsp-diagnostic-warning-decoration-color: var(
+    --jp-warn-color1
+  );
   --jp-editor-mirror-lsp-diagnostic-information-decoration-color: var(
     --jp-info-color1
   );

@@ -110,7 +110,6 @@ export class LSPConnector extends DataConnector<
   async fetch(
     request: CompletionHandler.IRequest
   ): Promise<CompletionHandler.IReply> {
-    console.log('TEST');
     let editor = this._editor;
 
     const cursor = editor.getCursorPosition();
@@ -201,7 +200,8 @@ export class LSPConnector extends DataConnector<
   ): Promise<CompletionHandler.IReply> {
     let connection = this._connections.get(document.id_path);
 
-    console.log('[LSP][Completer] Fetching and Transforming:', token);
+    console.log('[LSP][Completer] Fetching and Transforming');
+    console.log('[LSP][Completer] Token:', token);
 
     let lspCompletionItems = ((await connection.getCompletion(
       cursor,
