@@ -102,18 +102,18 @@ export class LSPConnector extends DataConnector<
     return this.virtual_editor.transform_editor_to_root(cm_editor, cm_start);
   }
 
-  /**
-   * Fetch completion requests.
-   *
-   * @param request - The completion request text and details.
-   */
-  async fetch(
+  async fetchItems(
     request: CompletionHandler.IRequest
-  ): Promise<CompletionHandler.IReply> {
+  ): Promise<CompletionHandler.ICompletionItemsReply> {
     let editor = this._editor;
-
     const cursor = editor.getCursorPosition();
     const token = editor.getTokenForPosition(cursor);
+    console.log(
+      'Fetch Items:',
+      this.suppress_auto_invoke_in,
+      console.log('This', this),
+      console.log('Editor', editor)
+    );
 
     if (this.suppress_auto_invoke_in.indexOf(token.type) !== -1) {
       console.log('Suppressing completer auto-invoke in', token.type);
@@ -181,12 +181,106 @@ export class LSPConnector extends DataConnector<
         position_in_token
       ).catch(e => {
         console.warn('LSP: hint failed', e);
-        return this.fallback_connector.fetch(request);
+        return this.fallback_connector
+          .fetch(request)
+          .then(res => this.transform_reply(res));
       });
     } catch (e) {
       console.warn('LSP: kernel completions failed', e);
-      return this.fallback_connector.fetch(request);
+      return this.fallback_connector
+        .fetch(request)
+        .then(res => this.transform_reply(res));
     }
+  }
+
+  /**
+   * Fetch completion requests.
+   *
+   * @param request - The completion request text and details.
+   */
+  async fetch(
+    request: CompletionHandler.IRequest
+  ): Promise<CompletionHandler.IReply> {
+    return new Promise(() => {
+      console.error('Old fetch');
+    });
+    // let editor = this._editor;
+
+    // const cursor = editor.getCursorPosition();
+    // const token = editor.getTokenForPosition(cursor);
+
+    // if (this.suppress_auto_invoke_in.indexOf(token.type) !== -1) {
+    //   console.log('Suppressing completer auto-invoke in', token.type);
+    //   return;
+    // }
+
+    // const start = editor.getPositionAt(token.offset);
+    // const end = editor.getPositionAt(token.offset + token.value.length);
+
+    // let position_in_token = cursor.column - start.column - 1;
+    // const typed_character = token.value[cursor.column - start.column - 1];
+
+    // let start_in_root = this.transform_from_editor_to_root(start);
+    // let end_in_root = this.transform_from_editor_to_root(end);
+    // let cursor_in_root = this.transform_from_editor_to_root(cursor);
+
+    // let virtual_editor = this.virtual_editor;
+
+    // // find document for position
+    // let document = virtual_editor.document_at_root_position(start_in_root);
+
+    // let virtual_start = virtual_editor.root_position_to_virtual_position(
+    //   start_in_root
+    // );
+    // let virtual_end = virtual_editor.root_position_to_virtual_position(
+    //   end_in_root
+    // );
+    // let virtual_cursor = virtual_editor.root_position_to_virtual_position(
+    //   cursor_in_root
+    // );
+
+    // try {
+    //   if (this._kernel_connector && this._has_kernel) {
+    //     // TODO: this would be awesome if we could connect to rpy2 for R suggestions in Python,
+    //     //  but this is not the job of this extension; nevertheless its better to keep this in
+    //     //  mind to avoid introducing design decisions which would make this impossible
+    //     //  (for other extensions)
+    //     const kernelLanguage = await this._kernel_language();
+
+    //     if (document.language === kernelLanguage) {
+    //       return Promise.all([
+    //         this._kernel_connector.fetch(request),
+    //         this.fetch_lsp(
+    //           token,
+    //           typed_character,
+    //           virtual_start,
+    //           virtual_end,
+    //           virtual_cursor,
+    //           document,
+    //           position_in_token
+    //         )
+    //       ]).then(([kernel, lsp]) =>
+    //         this.merge_replies(this.transform_reply(kernel), lsp, this._editor)
+    //       );
+    //     }
+    //   }
+
+    //   return this.fetch_lsp(
+    //     token,
+    //     typed_character,
+    //     virtual_start,
+    //     virtual_end,
+    //     virtual_cursor,
+    //     document,
+    //     position_in_token
+    //   ).catch(e => {
+    //     console.warn('LSP: hint failed', e);
+    //     return this.fallback_connector.fetch(request);
+    //   });
+    // } catch (e) {
+    //   console.warn('LSP: kernel completions failed', e);
+    //   return this.fallback_connector.fetch(request);
+    // }
   }
 
   async fetch_lsp(
@@ -197,7 +291,7 @@ export class LSPConnector extends DataConnector<
     cursor: IVirtualPosition,
     document: VirtualDocument,
     position_in_token: number
-  ): Promise<CompletionHandler.IReply> {
+  ): Promise<CompletionHandler.ICompletionItemsReply> {
     let connection = this._connections.get(document.id_path);
 
     console.log('[LSP][Completer] Fetching and Transforming');
@@ -263,15 +357,13 @@ export class LSPConnector extends DataConnector<
       // but it did not work for "from statistics <tab>" and lead to "from statisticsimport" (no space)
       start: token.offset + (all_non_prefixed ? 1 : 0),
       end: token.offset + prefix.length,
-      matches: [],
-      metadata: {},
       items
     };
   }
 
   private transform_reply(
     reply: CompletionHandler.IReply
-  ): CompletionHandler.IReply {
+  ): CompletionHandler.ICompletionItemsReply {
     console.log('[LSP][Completer] Transforming kernel reply:', reply);
     const items = new Array<CompletionHandler.ICompletionItem>();
     const metadata = reply.metadata || {};
@@ -292,14 +384,14 @@ export class LSPConnector extends DataConnector<
         items.push({ label: match });
       });
     }
-    return { ...reply, items };
+    return { start: reply.start, end: reply.end, items };
   }
 
   private merge_replies(
-    kernel: CompletionHandler.IReply,
-    lsp: CompletionHandler.IReply,
+    kernel: CompletionHandler.ICompletionItemsReply,
+    lsp: CompletionHandler.ICompletionItemsReply,
     editor: CodeEditor.IEditor
-  ): CompletionHandler.IReply {
+  ): CompletionHandler.ICompletionItemsReply {
     console.log('[LSP][Completer] Merging completions:', lsp, kernel);
     if (!kernel.items.length) {
       return lsp;

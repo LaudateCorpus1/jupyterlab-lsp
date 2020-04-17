@@ -89,7 +89,10 @@ export class FileEditorAdapter extends JupyterLabWidgetAdapter {
     this.completion_manager.register({
       connector: this.current_completion_connector,
       editor: this.editor.editor,
-      parent: this.widget
+      parent: this.widget,
+      fetchItems: this.current_completion_connector.fetchItems.bind(
+        this.current_completion_connector
+      )
     });
   }
 

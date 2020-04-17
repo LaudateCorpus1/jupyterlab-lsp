@@ -188,7 +188,10 @@ export class NotebookAdapter extends JupyterLabWidgetAdapter {
     const handler = this.completion_manager.register({
       connector: this.current_completion_connector,
       editor: cell.editor,
-      parent: this.widget
+      parent: this.widget,
+      fetchItems: this.current_completion_connector.fetchItems.bind(
+        this.current_completion_connector
+      )
     });
     this.current_completion_handler = handler;
     this.widget.content.activeCellChanged.connect(this.on_completions, this);
